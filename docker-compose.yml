@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  dynamicconfiglib-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - mongodb
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - MongoConnection__ConnectionString=mongodb://mongodb:27017
+      - MongoConnection__DatabaseName=dynamicConfig
+
+  conf:
+    build:
+      context: .
+      dockerfile: Dockerfile.conf
+    ports:
+      - "8081:80"
+    depends_on:
+      - mongodb
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - MongoConnection__ConnectionString=mongodb://mongodb:27017
+      - MongoConnection__DatabaseName=dynamicConfig
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+
+volumes:
+  mongodb_data:

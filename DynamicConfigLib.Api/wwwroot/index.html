@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>DynamicConfigLib Yönetim Paneli</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/styles.css" rel="stylesheet">
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">DynamicConfigLib</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">Yönetim Paneli</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/swagger" target="_blank">Swagger API</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="applicationFilter" class="form-label">Uygulama Adı:</label>
+                    <input type="text" class="form-control" id="applicationFilter"
+                        placeholder="Uygulama adına göre filtrele">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label for="nameFilter" class="form-label">Konfigürasyon Adı:</label>
+                    <input type="text" class="form-control" id="nameFilter"
+                        placeholder="Konfigürasyon adına göre filtrele">
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <button id="btnFilter" class="btn btn-primary">Filtrele</button>
+                <button id="btnAddNew" class="btn btn-success">Yeni Ekle</button>
+                <button id="btnRefresh" class="btn btn-info text-white">Yenile</button>
+            </div>
+        </div>
+
+        <div id="configList" class="row">
+            <!-- Konfigürasyonlar burada listelenecek -->
+            <div class="col-12 text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Yükleniyor...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Yeni ekleme -->
+        <div class="modal fade" id="configModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalTitle">Konfigürasyon Ekle/Düzenle</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="configForm">
+                            <input type="hidden" id="configId">
+
+                            <div class="mb-3">
+                                <label for="configName" class="form-label">Konfigürasyon Adı:</label>
+                                <input type="text" class="form-control" id="configName" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="configType" class="form-label">Tip:</label>
+                                <select class="form-control" id="configType" required>
+                                    <option value="string">String</option>
+                                    <option value="int">Int</option>
+                                    <option value="bool">Boolean</option>
+                                    <option value="double">Double</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="configValue" class="form-label">Değer:</label>
+                                <input type="text" class="form-control" id="configValue" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="configIsActive" checked>
+                                    <label class="form-check-label" for="configIsActive">
+                                        Aktif
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="configApp" class="form-label">Uygulama Adı:</label>
+                                <input type="text" class="form-control" id="configApp" required>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                        <button type="button" class="btn btn-primary" id="btnSaveConfig">Kaydet</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // API URL
+        const apiUrl = '/api/Config';
+        let configModal;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // Modal nesnesini oluştur
+            configModal = new bootstrap.Modal(document.getElementById('configModal'));
+
+            // Olayları bağlandı
+            document.getElementById('btnFilter').addEventListener('click', loadConfigs);
+            document.getElementById('btnAddNew').addEventListener('click', showAddModal);
+            document.getElementById('btnSaveConfig').addEventListener('click', saveConfig);
+            document.getElementById('btnRefresh').addEventListener('click', loadAllConfigs);
+
+            // İlk yükleme
+            loadAllConfigs();
+        });
+
+        // Tüm konfigürasyonları yükle
+        async function loadAllConfigs() {
+            document.getElementById('applicationFilter').value = '';
+            document.getElementById('nameFilter').value = '';
+            loadConfigs();
+        }
+
+        // Konfigürasyonları yükle
+        async function loadConfigs() {
+            const appFilter = document.getElementById('applicationFilter').value;
+            const nameFilter = document.getElementById('nameFilter').value;
+
+            // Yükleniyor göster
+            document.getElementById('configList').innerHTML = `
+                <div class="col-12 text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Yükleniyor...</span>
+                    </div>
+                </div>
+            `;
+
+            try {
+                let url = apiUrl;
+                if (appFilter) {
+                    url = `${apiUrl}/${appFilter}`;
+                }
+
+                const response = await fetch(url);
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        // 404 hatası durumunda boş liste göster
+                        displayConfigs([]);
+                        return;
+                    }
+                    throw new Error(`API yanıt vermedi: ${response.status}`);
+                }
+
+                let configs = await response.json();
+
+                // İsme göre istemci tarafında filtreleme
+                if (nameFilter) {
+                    configs = configs.filter(c => c.name.toLowerCase().includes(nameFilter.toLowerCase()));
+                }
+
+                displayConfigs(configs);
+            } catch (error) {
+                console.error('Hata:', error);
+                document.getElementById('configList').innerHTML = `
+                    <div class="col-12 alert alert-danger">
+                        Konfigürasyonlar yüklenirken bir hata oluştu: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Konfigürasyonları görüntüle
+        function displayConfigs(configs) {
+            const configList = document.getElementById('configList');
+            configList.innerHTML = '';
+
+            if (configs.length === 0) {
+                configList.innerHTML = `
+                    <div class="col-12 alert alert-info">
+                        <p>Konfigürasyon bulunamadı.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            configs.forEach(config => {
+                const card = document.createElement('div');
+                card.className = 'col-md-4 config-card';
+
+                const activeStatus = config.isActive ?
+                    '<span class="badge bg-success">Aktif</span>' :
+                    '<span class="badge bg-danger">Pasif</span>';
+
+                card.innerHTML = `
+                    <div class="card h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span>${config.name}</span> ${activeStatus}
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">${config.applicationName}</h5>
+                            <p class="card-text mb-1"><strong>Tip:</strong> ${config.type}</p>
+                            <p class="card-text"><strong>Değer:</strong> ${config.value}</p>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <button class="btn btn-primary btn-sm edit-config" data-id="${config.id}">Düzenle</button>
+                            <button class="btn btn-danger btn-sm delete-config" data-id="${config.id}">Sil</button>
+                        </div>
+                    </div>
+                `;
+
+                configList.appendChild(card);
+            });
+
+            // Düzenle ve Sil butonlarına olay dinleyicileri ekle
+            document.querySelectorAll('.edit-config').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const configId = this.getAttribute('data-id');
+                    editConfig(configId, configs);
+                });
+            });
+
+            document.querySelectorAll('.delete-config').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const configId = this.getAttribute('data-id');
+                    deleteConfig(configId);
+                });
+            });
+        }
+
+        // Ekle modalını göster
+        function showAddModal() {
+            document.getElementById('configForm').reset();
+            document.getElementById('configId').value = '';
+            document.getElementById('modalTitle').textContent = 'Yeni Konfigürasyon Ekle';
+            configModal.show();
+        }
+
+        // Düzenle modalını göster
+        function editConfig(id, configs) {
+            const config = configs.find(c => c.id === id);
+            if (!config) return;
+
+            document.getElementById('configId').value = config.id;
+            document.getElementById('configName').value = config.name;
+            document.getElementById('configType').value = config.type;
+            document.getElementById('configValue').value = config.value;
+            document.getElementById('configIsActive').checked = config.isActive;
+            document.getElementById('configApp').value = config.applicationName;
+
+            document.getElementById('modalTitle').textContent = 'Konfigürasyon Düzenle';
+            configModal.show();
+        }
+
+        // Konfigürasyonu kaydet
+        async function saveConfig() {
+            const id = document.getElementById('configId').value;
+            const isUpdate = !!id;
+
+            const configData = {
+                id: isUpdate ? id : null,
+                configId: isUpdate ? null : Math.floor(Math.random() * 1000),
+                name: document.getElementById('configName').value,
+                type: document.getElementById('configType').value,
+                value: document.getElementById('configValue').value,
+                isActive: document.getElementById('configIsActive').checked,
+                applicationName: document.getElementById('configApp').value
+            };
+
+            try {
+                const url = isUpdate ? `${apiUrl}/${id}` : apiUrl;
+                const method = isUpdate ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(configData)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API yanıt vermedi: ${response.status}`);
+                }
+
+                configModal.hide();
+                loadAllConfigs();
+
+            } catch (error) {
+                console.error('Hata:', error);
+                alert('Konfigürasyon kaydedilirken bir hata oluştu: ' + error.message);
+            }
+        }
+
+        // Konfigürasyonu sil
+        async function deleteConfig(id) {
+            if (!confirm('Bu konfigürasyonu silmek istediğinizden emin misiniz?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${apiUrl}/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API yanıt vermedi: ${response.status}`);
+                }
+
+                loadAllConfigs();
+
+            } catch (error) {
+                console.error('Hata:', error);
+                alert('Konfigürasyon silinirken bir hata oluştu: ' + error.message);
+            }
+        }
+    </script>
+</body>
+
+</html>

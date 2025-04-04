@@ -1,0 +1,8 @@
+_id,ConfigId,Name,Type,Value,IsActive,ApplicationName,LastUpdated
+67ed6e07ec3d1a15305687c4,,SiteName,int,1,false,SERVICE-msa,2025-04-04T14:34:56.346Z
+67ed6e15ec3d1a15305687c5,,SiteName,int,3,true,SERVICE-A,2025-04-04T18:43:05.485Z
+67ed6fb0ec3d1a15305687c9,0,IsBasketEnabled,bool,0,true,SERVICE-B,2025-04-03T16:35:37.528Z
+67ed6fd3ec3d1a15305687cb,0,SiteName,string,soty.io1,true,SERVICE-c,2025-04-03T16:39:07.226Z
+67ee98d9fa0702ef0cb0e1f8,621,testogz2,string,testogz2,false,testogz2,2025-04-03T14:19:05.478Z
+67eead5f9736a4b300e1fcde,0,TestSetting,string,Bu bir test değeridir değişti,true,TestApp,2025-04-03T15:47:16.646Z
+67f02812d10d3b59c16169dc,,SiteName,int,1,true,aaaaaaAAAAAAAAAAAAAAAA,2025-04-04T18:47:48.410Z
